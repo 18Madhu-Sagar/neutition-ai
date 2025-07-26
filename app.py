@@ -903,17 +903,42 @@ Format the response in markdown with clear sections and bullet points for easy r
         """Detect if the query is a food logging request"""
         query_lower = query.lower()
         
-        # Keywords that indicate food logging
-        food_logging_keywords = [
-            'ate', 'eaten', 'consumed', 'had', 'drank', 'drank',
-            'log food', 'log meal', 'log calories', 'track food', 'track meal',
-            'add food', 'add meal', 'record food', 'record meal',
-            'just ate', 'just had', 'just consumed',
-            'breakfast', 'lunch', 'dinner', 'snack', 'meal'
+        # First check for explicit non-logging patterns (diet suggestions, recommendations, etc.)
+        non_logging_patterns = [
+            'suggest', 'recommend', 'what should', 'what can', 'help me', 'advice',
+            'plan for', 'ideas for', 'options for', 'good for', 'best for',
+            'recipe', 'recipes', 'how to', 'what to eat', 'diet for'
         ]
         
-        # Check if query contains food logging keywords
-        return any(keyword in query_lower for keyword in food_logging_keywords)
+        # If it's clearly asking for suggestions/advice, it's NOT food logging
+        if any(pattern in query_lower for pattern in non_logging_patterns):
+            return False
+        
+        # Strong food logging indicators (past tense actions)
+        strong_logging_keywords = [
+            'ate', 'eaten', 'consumed', 'had for breakfast', 'had for lunch', 'had for dinner',
+            'drank', 'finished eating', 'just ate', 'just had', 'just consumed',
+            'log food', 'log meal', 'log calories', 'track food', 'track meal',
+            'add food', 'add meal', 'record food', 'record meal'
+        ]
+        
+        # Weaker indicators that need context (only trigger if combined with food items)
+        weak_logging_keywords = ['had', 'got', 'took']
+        
+        # Check for strong logging indicators first
+        if any(keyword in query_lower for keyword in strong_logging_keywords):
+            return True
+        
+        # For weak indicators, only trigger if they mention specific food items
+        if any(keyword in query_lower for keyword in weak_logging_keywords):
+            # Common food items that suggest actual consumption
+            food_items = [
+                'apple', 'banana', 'chicken', 'rice', 'bread', 'egg', 'milk',
+                'coffee', 'tea', 'water', 'salad', 'pizza', 'burger', 'sandwich'
+            ]
+            return any(food in query_lower for food in food_items)
+        
+        return False
     
     def _handle_food_logging_request(self, query: str, user_id: str, user_prefs: Dict[str, Any]) -> str:
         """Handle food logging requests using AI to extract food information"""
@@ -1430,15 +1455,4 @@ def main():
         st.info("Please check your API keys and dependencies.")
 
 if __name__ == "__main__":
-    # Check if running with Streamlit
-    import sys
-    if 'streamlit' not in sys.modules:
-        print("❌ Error: This app must be run with Streamlit!")
-        print("✅ Correct usage:")
-        print("   Option 1: python run_app.py")
-        print("   Option 2: streamlit run app.py")
-        print("\n🔍 The ScriptRunContext warnings you're seeing occur when")
-        print("   Streamlit apps are run directly with 'python app.py'")
-        sys.exit(1)
-    
-    main()
+    main() 
